@@ -1,0 +1,15 @@
+[Unit]
+Description=Enterprise Linux Platform Python Application
+After=network.target
+
+[Service]
+Type=simple
+User=appsvc
+Group=appsvc
+WorkingDirectory=/opt/enterprise-app
+ExecStart=/usr/bin/python3 /opt/enterprise-app/app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

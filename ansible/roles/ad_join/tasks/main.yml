@@ -1,0 +1,186 @@
+---
+# ============================================================
+# Active Directory Integration Role
+# ============================================================
+
+- name: Allow NetworkManager to manage DNS
+  ansible.builtin.copy:
+    dest: /etc/NetworkManager/conf.d/zz-dns.conf
+    content: |
+      [main]
+      dns=default
+    owner: root
+    group: root
+    mode: '0644'
+  register: nm_dns_override
+
+- name: Get active NetworkManager connection
+  ansible.builtin.command:
+    cmd: nmcli -g GENERAL.CONNECTION device show {{ ansible_default_ipv4.interface }}
+  register: nm_connection
+  changed_when: false
+
+- name: Get current DNS configuration
+  ansible.builtin.command:
+    cmd: nmcli -g ipv4.dns connection show "{{ nm_connection.stdout }}"
+  register: current_dns
+  changed_when: false
+
+- name: Configure Active Directory DNS server
+  ansible.builtin.command:
+    cmd: >
+      nmcli connection modify "{{ nm_connection.stdout }}"
+      ipv4.dns "{{ ad_dns_server }}"
+      ipv4.ignore-auto-dns yes
+  when: ad_dns_server not in current_dns.stdout
+  register: dns_changed
+
+- name: Restart NetworkManager when DNS configuration changes
+  ansible.builtin.service:
+    name: NetworkManager
+    state: restarted
+  when: nm_dns_override.changed or dns_changed.changed | default(false)
+
+- name: Wait for SSH after NetworkManager restart
+  ansible.builtin.wait_for_connection:
+    timeout: 60
+  when: nm_dns_override.changed or dns_changed.changed | default(false)
+
+- name: Verify Active Directory DNS resolution
+  ansible.builtin.command:
+    cmd: getent ahostsv4 dc01.ad.homelab.local
+  register: ad_dns_test
+  changed_when: false
+
+# ============================================================
+# Install AD Integration Packages
+# ============================================================
+
+- name: Install Active Directory integration packages
+  ansible.builtin.dnf:
+    name: "{{ ad_packages }}"
+    state: present
+
+- name: Ensure oddjobd is enabled and running
+  ansible.builtin.service:
+    name: oddjobd
+    state: started
+    enabled: true
+
+# ============================================================
+# Check Existing Domain Membership
+# ============================================================
+
+- name: Check current Active Directory membership
+  ansible.builtin.command:
+    cmd: realm list
+  register: realm_status
+  changed_when: false
+
+- name: Display current domain membership
+  ansible.builtin.debug:
+    msg: >-
+      {{ 'Already joined to ' + ad_domain
+         if ad_domain in realm_status.stdout
+         else 'Not currently joined to ' + ad_domain }}
+
+# ============================================================
+# Kerberos Authentication
+# ============================================================
+
+- name: Obtain Kerberos ticket for AD join service account
+  ansible.builtin.command:
+    argv:
+      - kinit
+      - "{{ vault_ad_join_user }}"
+    stdin: "{{ vault_ad_join_password }}"
+    stdin_add_newline: true
+  no_log: true
+  changed_when: false
+  when: ad_domain not in realm_status.stdout
+
+# ============================================================
+# Join Active Directory
+# ============================================================
+
+- name: Join server to Active Directory
+  ansible.builtin.command:
+    argv:
+      - realm
+      - join
+      - "{{ ad_domain }}"
+      - "--computer-ou={{ ad_computer_ou }}"
+  no_log: true
+  register: ad_join_result
+  when: ad_domain not in realm_status.stdout
+
+# ============================================================
+# Verify Domain Membership
+# ============================================================
+
+- name: Verify Active Directory membership after join
+  ansible.builtin.command:
+    cmd: realm list
+  register: realm_verify
+  changed_when: false
+
+- name: Fail if Active Directory join was unsuccessful
+  ansible.builtin.assert:
+    that:
+      - ad_domain in realm_verify.stdout
+    fail_msg: "Server is not joined to {{ ad_domain }}"
+    success_msg: "Server is successfully joined to {{ ad_domain }}"
+
+# ============================================================
+# Ensure Home Directory Creation
+# ============================================================
+
+- name: Check authselect configuration
+  ansible.builtin.command:
+    cmd: authselect current
+  register: authselect_status
+  changed_when: false
+
+- name: Enable automatic home directory creation
+  ansible.builtin.command:
+    cmd: authselect enable-feature with-mkhomedir
+  when: "'with-mkhomedir' not in authselect_status.stdout"
+
+- name: Ensure oddjobd remains running
+  ansible.builtin.service:
+    name: oddjobd
+    state: started
+    enabled: true
+
+# ============================================================
+# AD Group Sudo Access
+# ============================================================
+
+- name: Configure Linux Admins AD group for sudo
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/linux-admins
+    content: |
+      %{{ ad_admin_group }} ALL=(ALL) ALL
+    owner: root
+    group: root
+    mode: '0440'
+    validate: '/usr/sbin/visudo -cf %s'
+
+# ============================================================
+# SSH Authentication
+# ============================================================
+
+- name: Enable SSH password authentication for AD users
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication\s+'
+    line: 'PasswordAuthentication yes'
+    backup: true
+    validate: '/usr/sbin/sshd -t -f %s'
+  register: ssh_password_auth
+
+- name: Reload SSH service
+  ansible.builtin.service:
+    name: sshd
+    state: reloaded
+  when: ssh_password_auth.changed

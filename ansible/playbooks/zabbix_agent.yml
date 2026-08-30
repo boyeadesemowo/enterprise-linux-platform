@@ -1,0 +1,13 @@
+---
+- name: Deploy Zabbix monitoring agents
+  hosts: linux_servers
+  become: true
+
+  roles:
+    - zabbix_agent
+- name: Deploy Zabbix monitoring agents
+  hosts: linux_servers
+  become: true
+
+  roles:
+    - zabbix_agent

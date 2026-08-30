@@ -1,0 +1,51 @@
+---
+# tasks file for roles/appserver
+# ---
+- name: Create application service account
+  ansible.builtin.user:
+    name: appsvc
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+
+- name: Create application directory
+  ansible.builtin.file:
+    path: /opt/enterprise-app
+    state: directory
+    owner: appsvc
+    group: appsvc
+    mode: "0755"
+
+- name: Deploy Python application
+  ansible.builtin.template:
+    src: app.py.j2
+    dest: /opt/enterprise-app/app.py
+    owner: appsvc
+    group: appsvc
+    mode: "0755"
+  notify: Restart enterprise app
+
+- name: Deploy systemd service
+  ansible.builtin.template:
+    src: enterprise-app.service.j2
+    dest: /etc/systemd/system/enterprise-app.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart enterprise app
+
+- name: Ensure enterprise application is enabled and running
+  ansible.builtin.systemd:
+    name: enterprise-app
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Open application port 8080
+  ansible.posix.firewalld:
+    port: 8080/tcp
+    permanent: true
+    immediate: true
+    state: enabled

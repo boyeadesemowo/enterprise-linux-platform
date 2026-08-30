@@ -1,0 +1,11 @@
+---
+# handlers file for roles/appserver
+# ---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart enterprise app
+  ansible.builtin.systemd:
+    name: enterprise-app
+    state: restarted

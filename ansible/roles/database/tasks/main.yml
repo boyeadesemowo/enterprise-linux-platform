@@ -1,0 +1,45 @@
+---
+# tasks file for roles/database
+#
+# ---
+- name: Enable MariaDB 10.11 module stream
+  ansible.builtin.dnf:
+    name: "@mariadb:10.11/server"
+    state: present
+
+- name: Install MariaDB server
+  ansible.builtin.dnf:
+    name:
+      - mariadb-server
+      - python3-PyMySQL
+    state: present
+
+- name: Ensure MariaDB is enabled and running
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: true
+
+- name: Create enterprise application database
+  community.mysql.mysql_db:
+    name: "{{ database_name }}"
+    state: present
+    login_unix_socket: /var/lib/mysql/mysql.sock
+
+- name: Create application database user
+  community.mysql.mysql_user:
+    name: "{{ database_user }}"
+    password: "{{ vault_database_password }}"
+    host: "{{ database_host }}"
+    priv: "{{ database_name }}.*:ALL"
+    state: present
+    login_unix_socket: /var/lib/mysql/mysql.sock
+  no_log: true
+
+
+- name: Allow MariaDB access from application server
+  ansible.posix.firewalld:
+    rich_rule: 'rule family="ipv4" source address="{{ database_host }}/32" port port="3306" protocol="tcp" accept'
+    permanent: true
+    immediate: true
+    state: enabled

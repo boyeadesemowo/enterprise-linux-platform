@@ -1,0 +1,17 @@
+---
+ad_domain: "ad.homelab.local"
+ad_realm: "AD.HOMELAB.LOCAL"
+ad_dns_server: "192.168.1.110"
+ad_admin_group: "linux-admins@ad.homelab.local"
+
+ad_packages:
+  - realmd
+  - sssd
+  - sssd-tools
+  - adcli
+  - krb5-workstation
+  - oddjob
+  - oddjob-mkhomedir
+  - samba-common-tools
+
+ad_computer_ou: "OU=Linux Servers,DC=ad,DC=homelab,DC=local"

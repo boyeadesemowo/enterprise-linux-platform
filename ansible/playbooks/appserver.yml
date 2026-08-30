@@ -1,0 +1,7 @@
+---
+- name: Configure enterprise application server
+  hosts: appservers
+  become: true
+
+  roles:
+    - appserver

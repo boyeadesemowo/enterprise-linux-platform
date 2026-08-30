@@ -1,0 +1,27 @@
+---
+- name: Install baseline administration packages
+  ansible.builtin.dnf:
+    name:
+      - vim
+      - curl
+      - wget
+      - git
+      - chrony
+      - firewalld
+      - rsync
+      - lsof
+      - bind-utils
+      - bash-completion
+    state: present
+
+- name: Ensure chronyd is enabled and running
+  ansible.builtin.service:
+    name: chronyd
+    state: started
+    enabled: true
+
+- name: Ensure firewalld is enabled and running
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true

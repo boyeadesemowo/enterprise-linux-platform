@@ -1,0 +1,27 @@
+---
+- name: Test application to database connectivity
+  hosts: appservers
+  become: true
+
+  tasks:
+    - name: Install MariaDB client dependencies
+      ansible.builtin.dnf:
+        name:
+          - mariadb
+          - python3-PyMySQL 
+        state: present
+
+    - name: Test connection to enterprise database
+      community.mysql.mysql_query:
+        login_host: 192.168.1.104
+        login_user: appuser
+        login_password: "{{ vault_database_password }}"
+        login_db: enterprise_app
+        query: "SELECT DATABASE() AS database_name;"
+      register: database_test
+      no_log: true
+
+    - name: Confirm database connection
+      ansible.builtin.debug:
+        msg: "app01 successfully connected to enterprise_app on db01."
+      when: database_test is succeeded

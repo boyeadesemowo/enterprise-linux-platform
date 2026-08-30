@@ -1,0 +1,7 @@
+---
+- name: Configure enterprise database server
+  hosts: dbservers
+  become: true
+
+  roles:
+    - database

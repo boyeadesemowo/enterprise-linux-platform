@@ -1,0 +1,31 @@
+---
+# tasks file for roles/haproxy
+#
+#---
+- name: Install HAProxy
+  ansible.builtin.dnf:
+    name: haproxy
+    state: present
+
+- name: Deploy HAProxy configuration
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "/usr/sbin/haproxy -c -f %s"
+  notify: Restart HAProxy
+
+- name: Ensure HAProxy is enabled and running
+  ansible.builtin.service:
+    name: haproxy
+    state: started
+    enabled: true
+
+- name: Allow HTTP through firewalld
+  ansible.posix.firewalld:
+    service: http
+    permanent: true
+    immediate: true
+    state: enabled

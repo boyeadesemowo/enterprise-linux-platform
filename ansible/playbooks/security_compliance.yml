@@ -1,0 +1,53 @@
+---
+- name: Enterprise Linux Security Compliance Validation
+  hosts: linux_servers
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    - name: Check SELinux
+      ansible.builtin.command: getenforce
+      register: selinux_check
+      changed_when: false
+
+    - name: Check SSH root login
+      ansible.builtin.shell: |
+        sshd -T | grep '^permitrootlogin '
+      register: root_login_check
+      changed_when: false
+
+    - name: Check SSH authentication attempts
+      ansible.builtin.shell: |
+        sshd -T | grep '^maxauthtries '
+      register: max_auth_check
+      changed_when: false
+
+    - name: Check firewalld
+      ansible.builtin.command: firewall-cmd --state
+      register: firewall_check
+      changed_when: false
+
+    - name: Check auditd
+      ansible.builtin.command: systemctl is-active auditd
+      register: auditd_check
+      changed_when: false
+
+    - name: Check security audit rules
+      ansible.builtin.command: auditctl -l
+      register: audit_rules_check
+      changed_when: false
+
+    - name: Validate security baseline
+      ansible.builtin.assert:
+        that:
+          - selinux_check.stdout == "Enforcing"
+          - "'permitrootlogin no' in root_login_check.stdout"
+          - "'maxauthtries 3' in max_auth_check.stdout"
+          - firewall_check.stdout == "running"
+          - auditd_check.stdout == "active"
+          - "'ssh_config' in audit_rules_check.stdout"
+          - "'privileged' in audit_rules_check.stdout"
+          - "'identity' in audit_rules_check.stdout"
+        success_msg: "SECURITY COMPLIANCE: PASS - {{ inventory_hostname }}"
+        fail_msg: "SECURITY COMPLIANCE: FAIL - {{ inventory_hostname }}"

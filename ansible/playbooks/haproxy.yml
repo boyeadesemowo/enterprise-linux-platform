@@ -1,0 +1,7 @@
+---
+- name: Configure HAProxy load balancer
+  hosts: loadbalancers
+  become: true
+
+  roles:
+    - haproxy

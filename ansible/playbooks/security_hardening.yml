@@ -1,0 +1,7 @@
+---
+- name: Enterprise Linux Security Hardening
+  hosts: linux_servers
+  become: true
+
+  roles:
+    - security_hardening

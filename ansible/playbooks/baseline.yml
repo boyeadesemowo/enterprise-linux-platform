@@ -1,0 +1,7 @@
+---
+- name: Apply enterprise Linux baseline
+  hosts: linux_servers
+  become: true
+
+  roles:
+    - linux_baseline

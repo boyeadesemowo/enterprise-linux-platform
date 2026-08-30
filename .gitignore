@@ -1,0 +1,79 @@
+# ============================================================
+# Terraform
+# ============================================================
+
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+
+# Terraform CLI configuration
+.terraformrc
+terraform.rc
+
+# Terraform override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ============================================================
+# Ansible Secrets
+# ============================================================
+
+**/vault.yml
+**/vault.yaml
+**/vault_*.yml
+**/vault_*.yaml
+**/*vault-password*
+**/.vault_pass*
+
+# ============================================================
+# SSH / Certificates / Private Keys
+# ============================================================
+
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# ============================================================
+# Credentials / Environment Files
+# ============================================================
+
+.env
+.env.*
+*.secret
+*.secrets
+credentials*
+secrets*
+
+# ============================================================
+# Logs / Temporary Files
+# ============================================================
+
+*.log
+*.tmp
+*.swp
+*.bak
+*~
+.DS_Store
+
+# ============================================================
+# Python
+# ============================================================
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Terraform manual backup files
+*.tf.backup

@@ -1,0 +1,53 @@
+---
+- name: Pre-Hardening Security Audit
+  hosts: linux_servers
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    - name: Check SELinux status
+      ansible.builtin.command: getenforce
+      register: selinux_status
+      changed_when: false
+
+    - name: Check SSH effective configuration
+      ansible.builtin.shell: |
+        sshd -T | grep -E '^(permitrootlogin|passwordauthentication|pubkeyauthentication|maxauthtries) '
+      register: ssh_status
+      changed_when: false
+
+    - name: Check firewalld state
+      ansible.builtin.command: firewall-cmd --state
+      register: firewall_status
+      changed_when: false
+
+    - name: Check currently allowed firewall services
+      ansible.builtin.command: firewall-cmd --list-all
+      register: firewall_rules
+      changed_when: false
+
+    - name: Check auditd status
+      ansible.builtin.command: systemctl is-active auditd
+      register: auditd_status
+      changed_when: false
+      failed_when: false
+
+    - name: Check failed SSH logins
+      ansible.builtin.shell: |
+        journalctl -u sshd --since "24 hours ago" --no-pager |
+        grep -Ei 'failed password|authentication failure' |
+        tail -10 || true
+      register: failed_logins
+      changed_when: false
+
+    - name: Display security audit
+      ansible.builtin.debug:
+        msg:
+          - "HOST: {{ inventory_hostname }}"
+          - "SELinux: {{ selinux_status.stdout }}"
+          - "Firewall: {{ firewall_status.stdout }}"
+          - "Auditd: {{ auditd_status.stdout }}"
+          - "SSH: {{ ssh_status.stdout_lines }}"
+          - "Firewall Rules: {{ firewall_rules.stdout_lines }}"
+          - "Recent Failed SSH: {{ failed_logins.stdout_lines }}"

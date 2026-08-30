@@ -1,0 +1,7 @@
+---
+- name: Configure Linux Active Directory integration
+  hosts: linux_servers
+  become: true
+
+  roles:
+    - ad_join

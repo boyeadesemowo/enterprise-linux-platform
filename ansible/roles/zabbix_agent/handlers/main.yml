@@ -1,0 +1,8 @@
+---
+# handlers file for roles/zabbix_agent
+#
+# ---
+- name: Restart Zabbix Agent 2
+  ansible.builtin.service:
+    name: zabbix-agent2
+    state: restarted

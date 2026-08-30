@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ inventory_hostname }} - Enterprise Linux Platform</title>
+</head>
+<body>
+    <h1>Enterprise Linux Platform</h1>
+    <h2>Server: {{ inventory_hostname }}</h2>
+
+    <p>This web server was provisioned by Terraform and configured by Ansible.</p>
+
+    <p>Operating System: {{ ansible_distribution }} {{ ansible_distribution_version }}</p>
+    <p>IP Address: {{ ansible_default_ipv4.address }}</p>
+</body>
+</html>
