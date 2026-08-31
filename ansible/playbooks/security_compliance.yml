@@ -13,13 +13,20 @@
 
     - name: Check SSH root login
       ansible.builtin.shell: |
+        set -o pipefail
         sshd -T | grep '^permitrootlogin '
+      args:
+        executable: /bin/bash
       register: root_login_check
       changed_when: false
 
+
     - name: Check SSH authentication attempts
       ansible.builtin.shell: |
+        set -o pipefail
         sshd -T | grep '^maxauthtries '
+      args:
+        executable: /bin/bash
       register: max_auth_check
       changed_when: false
 
@@ -28,10 +35,9 @@
       register: firewall_check
       changed_when: false
 
-    - name: Check auditd
-      ansible.builtin.command: systemctl is-active auditd
-      register: auditd_check
-      changed_when: false
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
 
     - name: Check security audit rules
       ansible.builtin.command: auditctl -l
@@ -45,7 +51,7 @@
           - "'permitrootlogin no' in root_login_check.stdout"
           - "'maxauthtries 3' in max_auth_check.stdout"
           - firewall_check.stdout == "running"
-          - auditd_check.stdout == "active"
+          - ansible_facts.services['auditd.service'].state == "running"
           - "'ssh_config' in audit_rules_check.stdout"
           - "'privileged' in audit_rules_check.stdout"
           - "'identity' in audit_rules_check.stdout"

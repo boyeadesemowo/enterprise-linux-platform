@@ -3,3 +3,8 @@
   ansible.builtin.service:
     name: sshd
     state: reloaded
+
+- name: Load audit rules
+  ansible.builtin.command:
+    cmd: augenrules --load
+  changed_when: true

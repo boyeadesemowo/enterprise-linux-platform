@@ -30,10 +30,11 @@
   ansible.builtin.command:
     cmd: >
       nmcli connection modify "{{ nm_connection.stdout }}"
-      ipv4.dns "{{ ad_dns_server }}"
+      ipv4.dns "{{ ad_join_dns_server }}"
       ipv4.ignore-auto-dns yes
-  when: ad_dns_server not in current_dns.stdout
+  when: ad_join_dns_server not in current_dns.stdout
   register: dns_changed
+  changed_when: true
 
 - name: Restart NetworkManager when DNS configuration changes
   ansible.builtin.service:
@@ -58,7 +59,7 @@
 
 - name: Install Active Directory integration packages
   ansible.builtin.dnf:
-    name: "{{ ad_packages }}"
+    name: "{{ ad_join_packages }}"
     state: present
 
 - name: Ensure oddjobd is enabled and running
@@ -80,9 +81,9 @@
 - name: Display current domain membership
   ansible.builtin.debug:
     msg: >-
-      {{ 'Already joined to ' + ad_domain
-         if ad_domain in realm_status.stdout
-         else 'Not currently joined to ' + ad_domain }}
+      {{ 'Already joined to ' + ad_join_domain
+         if ad_join_domain in realm_status.stdout
+         else 'Not currently joined to ' + ad_join_domain }}
 
 # ============================================================
 # Kerberos Authentication
@@ -97,7 +98,7 @@
     stdin_add_newline: true
   no_log: true
   changed_when: false
-  when: ad_domain not in realm_status.stdout
+  when: ad_join_domain not in realm_status.stdout
 
 # ============================================================
 # Join Active Directory
@@ -108,11 +109,12 @@
     argv:
       - realm
       - join
-      - "{{ ad_domain }}"
-      - "--computer-ou={{ ad_computer_ou }}"
+      - "{{ ad_join_domain }}"
+      - "--computer-ou={{ ad_join_computer_ou }}"
   no_log: true
   register: ad_join_result
-  when: ad_domain not in realm_status.stdout
+  when: ad_join_domain not in realm_status.stdout
+  changed_when: true
 
 # ============================================================
 # Verify Domain Membership
@@ -127,9 +129,9 @@
 - name: Fail if Active Directory join was unsuccessful
   ansible.builtin.assert:
     that:
-      - ad_domain in realm_verify.stdout
-    fail_msg: "Server is not joined to {{ ad_domain }}"
-    success_msg: "Server is successfully joined to {{ ad_domain }}"
+      - ad_join_domain in realm_verify.stdout
+    fail_msg: "Server is not joined to {{ ad_join_domain }}"
+    success_msg: "Server is successfully joined to {{ ad_join_domain }}"
 
 # ============================================================
 # Ensure Home Directory Creation
@@ -145,6 +147,7 @@
   ansible.builtin.command:
     cmd: authselect enable-feature with-mkhomedir
   when: "'with-mkhomedir' not in authselect_status.stdout"
+  changed_when: true
 
 - name: Ensure oddjobd remains running
   ansible.builtin.service:
@@ -160,11 +163,16 @@
   ansible.builtin.copy:
     dest: /etc/sudoers.d/linux-admins
     content: |
-      %{{ ad_admin_group }} ALL=(ALL) ALL
+      %{{ ad_join_admin_group }} ALL=(ALL) ALL
     owner: root
     group: root
     mode: '0440'
     validate: '/usr/sbin/visudo -cf %s'
+
+# ============================================================
+# SSH Authentication
+# ============================================================
+
 
 # ============================================================
 # SSH Authentication
@@ -177,10 +185,4 @@
     line: 'PasswordAuthentication yes'
     backup: true
     validate: '/usr/sbin/sshd -t -f %s'
-  register: ssh_password_auth
-
-- name: Reload SSH service
-  ansible.builtin.service:
-    name: sshd
-    state: reloaded
-  when: ssh_password_auth.changed
+  notify: Reload SSH service

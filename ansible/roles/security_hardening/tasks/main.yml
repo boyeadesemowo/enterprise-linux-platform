@@ -21,6 +21,25 @@
     validate: '/usr/sbin/sshd -t -f %s'
   notify: Reload sshd
 
+
+- name: Harden SSH - remove existing password authentication settings
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^[[:space:]]*PasswordAuthentication[[:space:]]+.*$'
+    state: absent
+    backup: true
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: Reload sshd
+
+- name: Harden SSH - disable password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    line: 'PasswordAuthentication no'
+    insertafter: EOF
+    state: present
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: Reload sshd
+
 # ============================================================
 # Zabbix Agent Firewall Hardening
 # ============================================================
@@ -54,6 +73,7 @@
     state: started
     enabled: true
 
+
 - name: Deploy enterprise security audit rules
   ansible.builtin.copy:
     src: 99-enterprise-security.rules
@@ -61,9 +81,4 @@
     owner: root
     group: root
     mode: '0600'
-  register: audit_rules
-
-- name: Load audit rules
-  ansible.builtin.command:
-    cmd: augenrules --load
-  when: audit_rules.changed
+  notify: Load audit rules

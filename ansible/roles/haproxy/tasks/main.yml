@@ -1,7 +1,7 @@
 ---
 # tasks file for roles/haproxy
 #
-#---
+# ---
 - name: Install HAProxy
   ansible.builtin.dnf:
     name: haproxy
