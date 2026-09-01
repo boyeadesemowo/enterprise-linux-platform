@@ -1,0 +1,13 @@
+---
+satellite_registration_server: "satellite.lan"
+satellite_registration_organization: "HomeLab"
+satellite_registration_activation_key: "ak_RHEL8_DEV"
+satellite_registration_content_view: "cv_RHEL8"
+satellite_registration_lifecycle_environment: "DEV"
+
+satellite_registration_ca_url: >-
+  http://{{ satellite_registration_server }}/pub/katello-ca-consumer-latest.noarch.rpm
+
+satellite_registration_required_repositories:
+  - rhel-8-for-x86_64-baseos-rpms
+  - rhel-8-for-x86_64-appstream-rpms
