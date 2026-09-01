@@ -1,0 +1,5 @@
+---
+database_backup_name: "enterprise_app"
+database_backup_directory: "/var/backups/mariadb"
+database_backup_retention_days: 7
+database_backup_script: "/usr/local/sbin/backup-enterprise-db.sh"

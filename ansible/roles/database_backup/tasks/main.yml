@@ -1,0 +1,26 @@
+---
+- name: Create MariaDB backup directory
+  ansible.builtin.file:
+    path: "{{ database_backup_directory }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Deploy MariaDB backup script
+  ansible.builtin.template:
+    src: backup-enterprise-db.sh.j2
+    dest: "{{ database_backup_script }}"
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Schedule daily MariaDB backup
+  ansible.builtin.cron:
+    name: "Backup enterprise application database"
+    minute: "0"
+    hour: "2"
+    user: root
+    job: >-
+      {{ database_backup_script }}
+      >> /var/log/enterprise-db-backup.log 2>&1
