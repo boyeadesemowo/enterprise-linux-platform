@@ -1,0 +1,7 @@
+---
+- name: Register RHEL servers with Red Hat Satellite
+  hosts: linux_servers
+  become: true
+
+  roles:
+    - satellite_registration

@@ -1,0 +1,87 @@
+---
+- name: Check current RHSM server
+  ansible.builtin.command:
+    cmd: subscription-manager config --list
+  register: satellite_registration_rhsm_config
+  changed_when: false
+
+- name: Check current subscription identity
+  ansible.builtin.command:
+    cmd: subscription-manager identity
+  register: satellite_registration_identity
+  changed_when: false
+  failed_when: false
+
+- name: Determine whether host is correctly registered to Satellite
+  ansible.builtin.set_fact:
+    satellite_registration_is_correct: >-
+      {{
+        satellite_registration_identity.rc == 0 and
+        ('hostname = ' ~ satellite_registration_server)
+          in satellite_registration_rhsm_config.stdout and
+        ('org name: ' ~ satellite_registration_organization)
+          in satellite_registration_identity.stdout and
+        ('environment name: ' ~ satellite_registration_lifecycle_environment
+          ~ '/' ~ satellite_registration_content_view)
+          in satellite_registration_identity.stdout
+      }}
+
+- name: Unregister host from existing subscription service
+  ansible.builtin.command:
+    cmd: subscription-manager unregister
+  when:
+    - satellite_registration_identity.rc == 0
+    - not satellite_registration_is_correct
+  changed_when: true
+
+- name: Clean old subscription-manager configuration
+  ansible.builtin.command:
+    cmd: subscription-manager clean
+  when: not satellite_registration_is_correct
+  changed_when: true
+
+- name: Install Satellite CA consumer package
+  ansible.builtin.dnf:
+    name: "{{ satellite_registration_ca_url }}"
+    state: present
+    disable_gpg_check: true
+  when: not satellite_registration_is_correct
+
+- name: Register host with Satellite activation key
+  ansible.builtin.command:
+    cmd: >-
+      subscription-manager register
+      --org={{ satellite_registration_organization }}
+      --activationkey={{ satellite_registration_activation_key }}
+      --name={{ inventory_hostname }}
+  when: not satellite_registration_is_correct
+  changed_when: true
+
+- name: Verify Satellite registration
+  ansible.builtin.command:
+    cmd: subscription-manager identity
+  register: satellite_registration_final_identity
+  changed_when: false
+
+- name: Verify required repositories are enabled
+  ansible.builtin.command:
+    cmd: subscription-manager repos --list-enabled
+  register: satellite_registration_enabled_repos
+  changed_when: false
+
+- name: Validate Satellite configuration
+  ansible.builtin.assert:
+    that:
+      - "'org name: ' ~ satellite_registration_organization in satellite_registration_final_identity.stdout"
+      - >-
+        'environment name: ' ~
+        satellite_registration_lifecycle_environment ~ '/' ~
+        satellite_registration_content_view
+        in satellite_registration_final_identity.stdout
+      - "satellite_registration_required_repositories[0] in satellite_registration_enabled_repos.stdout"
+      - "satellite_registration_required_repositories[1] in satellite_registration_enabled_repos.stdout"
+    success_msg: >-
+      {{ inventory_hostname }} is registered to Satellite using
+      {{ satellite_registration_lifecycle_environment }}/{{ satellite_registration_content_view }}
+    fail_msg: >-
+      {{ inventory_hostname }} Satellite registration validation failed.
