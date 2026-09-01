@@ -1,0 +1,7 @@
+---
+- name: Configure enterprise database backup
+  hosts: dbservers
+  become: true
+
+  roles:
+    - database_backup
