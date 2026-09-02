@@ -38,6 +38,7 @@ Linux Infrastructure Monitoring
 ## Technologies
 
 - Red Hat Enterprise Linux
+- Red Hat Satellite
 - VMware vSphere / ESXi
 - Terraform
 - Ansible
@@ -81,6 +82,8 @@ Implemented roles include:
 - Active Directory integration
 - Zabbix agent deployment
 - Security hardening
+- Red Hat Satellite registration
+- MariaDB backup automation
 
 The roles are designed to be idempotent so repeated executions maintain the desired configuration without unnecessary changes.
 
@@ -145,6 +148,41 @@ Implemented controls include:
 A separate Ansible security-compliance playbook validates the custom baseline across the server fleet.
 
 Audit event capture was also tested to verify that privileged configuration changes can be traced back to the authenticated user.
+
+
+## Red Hat Satellite Patch Management
+
+The five-node RHEL fleet is centrally registered with Red Hat Satellite using an idempotent Ansible registration role.
+
+The implementation includes:
+
+- Activation-key based host registration
+- RHEL 8 BaseOS and AppStream repositories
+- Versioned Content Views
+- DEV lifecycle promotion
+- Centralized repository delivery
+- Security-update discovery
+- Pilot patch deployment
+- Fleet-wide security remediation
+- Post-patch validation
+
+Repository content was synchronized and published as a new version of `cv_RHEL8`. The updated Content View was promoted to DEV before security updates were deployed.
+
+Security updates were first applied to a pilot server before rollout across the fleet. Final validation confirmed that no applicable security updates remained against the promoted content.
+
+## Backup and Recovery
+
+MariaDB backup and recovery is automated through Ansible for the `enterprise_app` database on `db01`.
+
+The workflow provides:
+
+- Daily scheduled backups at 2:00 AM
+- Compressed SQL database dumps
+- Root-protected backup storage
+- Seven-day retention
+- SHA-256 integrity verification
+
+Recoverability was validated by restoring a generated backup into an isolated temporary database. The restored database was verified before the temporary database was removed, leaving the production `enterprise_app` database unchanged.
 
 ## CI Pipeline
 
